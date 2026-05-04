@@ -18,6 +18,7 @@ struct GameState
 	float width{};
 	float height{};
 	float speed{1};
+	int current_index{-1};
 }; 
 
 int send_to_client(int sockfd, GameState* state, int size)
@@ -68,7 +69,6 @@ int listenOnPort(const char* port)
 	struct addrinfo *p{}; 
 	int yes{1};
 	int sockfd{};
-	
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_socktype = SOCK_STREAM;
@@ -140,9 +140,9 @@ void handle_new_connections(int sockfd, struct pollfd fds[], int* size)
 	char remote_addr_name[INET6_ADDRSTRLEN]{};
 	GameState empty_state{};
 
-	GameState player1_initial_state{50, 100, 15, 100};
+	GameState player1_initial_state{50, 100, 15, 100, 4, 0};
 
-	GameState player2_initial_state{750, 100, 15, 100};
+	GameState player2_initial_state{750, 100, 15, 100, 4, 1};
 
 	GameState waiting_state[2]{player1_initial_state, empty_state}; 
 
@@ -174,8 +174,9 @@ void handle_new_connections(int sockfd, struct pollfd fds[], int* size)
 
 void handle_client_data(int client_fd, struct pollfd fds[], int* size)
 {
-	char buf[256]{};
-	int num_bytes = recv(client_fd, buf,  sizeof(buf), 0);
+	GameState state[2]{};
+	size_t state_size = sizeof(GameState) * 2; 
+	int num_bytes = recv(client_fd, state, state_size, 0);
 	if (num_bytes < 0) 
 	{
 		std::cout << "Cient refused to talk to me" << '\n';
@@ -188,7 +189,7 @@ void handle_client_data(int client_fd, struct pollfd fds[], int* size)
 			{
 				continue;
 			}
-			int status = send(fds[i].fd, buf, num_bytes, 0);
+			int status = send(fds[i].fd, state, num_bytes, 0);
 			if(status == -1)
 			{
 				perror("send"); 
