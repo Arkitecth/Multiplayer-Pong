@@ -1,6 +1,8 @@
 #include "net.h"
+#include <cstdio>
 #include <iostream>
 #include <fcntl.h>
+#include <sys/socket.h>
 
 
 
@@ -84,15 +86,19 @@ void receive_data(int sockfd, GameState state[2], bool blocking)
 
 		int num_bytes = recv(sockfd, state, target_size, 0);
 
-		if (num_bytes == -1) {
+		if (num_bytes == -1) 
+		{
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				return; 
-			} else {
+			} 
+			else 
+			{
 				perror("recv error");
 				exit(1);
 			}
 		} 
-		else if (num_bytes == 0) {
+		else if (num_bytes == 0) 
+		{
 			printf("Server closed connection\n");
 			exit(0);
 		}
@@ -109,8 +115,13 @@ void receive_data(int sockfd, GameState state[2], bool blocking)
 	
 }
 
-int send_data(int newfd, void * data) 
+void send_data(int newfd, GameState state[2]) 
 {
-	int status = send(newfd, data, sizeof(data), 0); 
-	return status;
+	size_t size = sizeof(GameState) * 2;
+	int res = send(newfd,  state, size, 0);
+	if (res == -1) 
+	{
+		perror("send error:"); 
+		return;
+	}
 }

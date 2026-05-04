@@ -41,7 +41,6 @@ struct Paddle
 		positionY += 1 * speed; 
 	}
 
-
 }; 
 
 struct Ball 
@@ -82,6 +81,7 @@ int main(int argc, const char* argv[])
 	SDL_Renderer* renderer{};
 	Ball ball{400, 225, 25, 25};
 	GameState state[2]{};
+	int current_player{};
 
 	int serverfd = connectToServer("localhost", "3490"); 
 	if (serverfd == -1) 
@@ -90,6 +90,14 @@ int main(int argc, const char* argv[])
 	}
 
 	receive_data(serverfd, state, true); 
+	if (state[1].current_index == -1) 
+	{
+		current_player = 0; //Player_1
+	} 
+	else 
+	{
+		current_player = 1; //Player 2
+	}
 
 	if (state[0].positionX == 0) 
 	{
@@ -124,13 +132,39 @@ int main(int argc, const char* argv[])
 
 			if (e.key.key == SDLK_DOWN) 
 			{
-				paddle.moveDown();
+				if (current_player == 0) 
+				{
+					paddle.moveDown();
+					state[current_player].positionY -= 1 * state[0].speed; 
+					send_data(serverfd, state); 
+				} 
+				else 
+				{
+					paddle2.moveDown();
+					state[current_player].positionY -= 1 * state[1].speed; 
+					send_data(serverfd, state); 
+
+				}
 			}
 
 			if (e.key.key == SDLK_UP) 
 			{
-				paddle.moveUp();
+
+				if (current_player == 0) 
+				{
+					paddle.moveUp();
+					state[current_player].positionY += 1 * state[0].speed; 
+					send_data(serverfd, state); 
+				} 
+				else 
+				{
+					paddle2.moveUp();
+					state[current_player].positionY += 1 * state[1].speed; 
+					send_data(serverfd, state); 
+
+				}
 			}
+
 		}
 		paddle.update(&state[0]);
 		paddle2.update(&state[1]);
