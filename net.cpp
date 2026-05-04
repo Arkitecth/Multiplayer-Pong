@@ -1,5 +1,8 @@
 #include "net.h"
 #include <iostream>
+#include <fcntl.h>
+
+
 
 void* get_in_addr(struct sockaddr* sa)
 {
@@ -70,19 +73,40 @@ int connectToServer(const char* host, const char* port)
 
 	return sockfd;
 }
-void receive_data(int sockfd, void * buffer)
-{
-	int num_bytes = recv(sockfd, buffer, 30, 0); 
 
-	if (num_bytes == -1) {
-		perror("recv"); 
-		close(sockfd); 
-		exit(1); 
-	}
-	if (num_bytes > 0) 
+void receive_data(int sockfd, GameState state[2], bool blocking)
+{
+	size_t target_size = sizeof(GameState) * 2;
+
+	if (!blocking) 
 	{
-		std::cout << "Get from server: " << reinterpret_cast<char*>(buffer) << '\n';
-	}
+		fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
+		int num_bytes = recv(sockfd, state, target_size, 0);
+
+		if (num_bytes == -1) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				return; 
+			} else {
+				perror("recv error");
+				exit(1);
+			}
+		} 
+		else if (num_bytes == 0) {
+			printf("Server closed connection\n");
+			exit(0);
+		}
+	} 
+	else 
+	{
+		int num_bytes = recv(sockfd, state, target_size, 0);
+		if (num_bytes == -1) 
+		{
+			perror("recv error");
+			exit(1);
+		}
+	} 
+	
 }
 
 int send_data(int newfd, void * data) 

@@ -1,5 +1,7 @@
 #include "iostream"
 #include <SDL3/SDL.h>
+#include <cstdlib>
+#include "net.h"
 
 struct Paddle
 {
@@ -7,6 +9,7 @@ struct Paddle
 	float positionY{};
 	float width{};
 	float height{};
+	float speed{1};
 
 	void draw(SDL_Renderer* m_renderer)
 	{
@@ -14,6 +17,31 @@ struct Paddle
 		SDL_SetRenderDrawColor(m_renderer, 255,  255,  255,  1); 
 		SDL_RenderRect(m_renderer, &rect); 
 	}
+
+	void update(GameState* state)
+	{
+		positionX = state->positionX;
+
+		positionY = state->positionY;
+
+		width = state->width;
+
+		height = state->height;
+
+		speed = state->speed;
+	}
+
+	void moveUp()
+	{
+		positionY -= 1 * speed;
+	}
+
+	void moveDown()
+	{
+		positionY += 1 * speed; 
+	}
+
+
 }; 
 
 struct Ball 
@@ -29,6 +57,10 @@ struct Ball
 		SDL_SetRenderDrawColor(m_renderer, 255,  255,  255,  1); 
 		SDL_RenderRect(m_renderer, &rect); 
 	}
+
+	void move()
+	{
+	}
 }; 
 
 
@@ -42,17 +74,32 @@ int main(int argc, const char* argv[])
 	{
 		host = argv[1];
 	}
+
 	int width{800};
 	int height{450};
 
 	SDL_Window* window{};
 	SDL_Renderer* renderer{};
-
-	Paddle paddle{50, 100, 15, 100};
-
-	Paddle paddle2{750, 100, 15, 100};
-
 	Ball ball{400, 225, 25, 25};
+	GameState state[2]{};
+
+	int serverfd = connectToServer("localhost", "3490"); 
+	if (serverfd == -1) 
+	{
+		exit(1); 
+	}
+
+	receive_data(serverfd, state, true); 
+
+	if (state[0].positionX == 0) 
+	{
+		std::cout << "An error occurred with data" << '\n';
+		exit(1); 
+	}
+
+	Paddle paddle{state[0].positionX, state[0].positionY, state[0].width, state[0].height, state[0].speed};
+
+	Paddle paddle2{state[1].positionX, state[1].positionY, state[1].width, state[1].height, state[1].speed};
 
 	bool status = SDL_CreateWindowAndRenderer("Pong", width, height, SDL_WINDOW_ALWAYS_ON_TOP, &window, &renderer);
 
@@ -66,6 +113,7 @@ int main(int argc, const char* argv[])
 	while (running) 
 	{
 		SDL_Event e; 
+		receive_data(serverfd, state, false); 
 		while (SDL_PollEvent(&e)) 
 		{
 			if (e.type == SDL_EVENT_QUIT) 
@@ -73,12 +121,23 @@ int main(int argc, const char* argv[])
 				running = false;
 				SDL_Quit();
 			}
-		}
 
+			if (e.key.key == SDLK_DOWN) 
+			{
+				paddle.moveDown();
+			}
+
+			if (e.key.key == SDLK_UP) 
+			{
+				paddle.moveUp();
+			}
+		}
+		paddle.update(&state[0]);
+		paddle2.update(&state[1]);
 
 		//Draw
 		paddle.draw(renderer); 
-		paddle2.draw(renderer); 
+		paddle2.draw(renderer);
 		ball.draw(renderer); 
 
 		SDL_SetRenderDrawColor(renderer, 0,  0,  0,  0);
